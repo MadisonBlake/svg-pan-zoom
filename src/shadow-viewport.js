@@ -34,7 +34,7 @@ ShadowViewport.prototype.init = function(viewport, options) {
   var newCTM = this.processCTM()
 
   // Update viewport CTM and cache zoom and pan
-  this.setCTM(newCTM)
+  this.setCTM(newCTM, false)
 
   // Update CTM in this frame
   this.updateCTM()
@@ -209,12 +209,18 @@ ShadowViewport.prototype.getCTM = function() {
  * Set a new CTM
  *
  * @param {SVGMatrix} newCTM
+ * @param {Boolean} userTriggered Default False. Indcates if user triggered method or not
  */
-ShadowViewport.prototype.setCTM = function(newCTM) {
+ShadowViewport.prototype.setCTM = function(newCTM, userTriggered) {
   var willZoom = this.isZoomDifferent(newCTM)
     , willPan = this.isPanDifferent(newCTM)
 
   if (willZoom || willPan) {
+
+    if(userTriggered) {
+      this.userTriggered = true;
+    }
+
     // Before zoom
     if (willZoom) {
       // If returns false then cancel zooming
@@ -302,6 +308,8 @@ ShadowViewport.prototype.updateCache = function(newCTM) {
 
 ShadowViewport.prototype.pendingUpdate = false
 
+ShadowViewport.prototype.userTriggered = null;
+
 /**
  * Place a request to update CTM on next Frame
  */
@@ -329,8 +337,10 @@ ShadowViewport.prototype.updateCTM = function() {
 
   // Notify about the update
   if(this.options.onUpdatedCTM) {
-    this.options.onUpdatedCTM(ctm)
+    this.options.onUpdatedCTM(ctm, this.userTriggered)
   }
+
+  this.userTriggered = null;
 }
 
 module.exports = function(viewport, options){

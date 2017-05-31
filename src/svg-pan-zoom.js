@@ -74,8 +74,8 @@ SvgPanZoom.prototype.init = function(svg, options) {
   , onPan: function(point) {
       if (that.viewport && that.options.onPan) {return that.options.onPan(point)}
     }
-  , onUpdatedCTM: function(ctm) {
-      if (that.viewport && that.options.onUpdatedCTM) {return that.options.onUpdatedCTM(ctm)}
+  , onUpdatedCTM: function(ctm, userInput) {
+      if (that.viewport && that.options.onUpdatedCTM) {return that.options.onUpdatedCTM(ctm, userInput)}
     }
   })
 
@@ -244,7 +244,7 @@ SvgPanZoom.prototype.handleMouseWheel = function(evt) {
     , relativeMousePoint = SvgUtils.getEventPoint(evt, this.svg).matrixTransform(inversedScreenCTM)
     , zoom = Math.pow(1 + this.options.zoomScaleSensitivity, (-1) * delta); // multiplying by neg. 1 so as to make zoom in/out behavior match Google maps behavior
 
-  this.zoomAtPoint(zoom, relativeMousePoint)
+  this.zoomAtPoint(zoom, relativeMousePoint, true)
 }
 
 /**
@@ -254,8 +254,9 @@ SvgPanZoom.prototype.handleMouseWheel = function(evt) {
  * @param  {Float} zoomScale    Number representing how much to zoom
  * @param  {Boolean} zoomAbsolute Default false. If true, zoomScale is treated as an absolute value.
  *                                Otherwise, zoomScale is treated as a multiplied (e.g. 1.10 would zoom in 10%)
+ * @param  {Boolean} userTriggered Default false. If true indicates this function was triggered by user interaction
  */
-SvgPanZoom.prototype.zoomAtPoint = function(zoomScale, point, zoomAbsolute) {
+SvgPanZoom.prototype.zoomAtPoint = function(zoomScale, point, zoomAbsolute, userTriggered) {
   var originalState = this.viewport.getOriginalState()
 
   if (!zoomAbsolute) {
@@ -272,13 +273,17 @@ SvgPanZoom.prototype.zoomAtPoint = function(zoomScale, point, zoomAbsolute) {
     zoomScale = zoomScale/this.getZoom()
   }
 
+  if(typeof(userTriggered) === "undefined") {
+    userTriggered = true;
+  }
+
   var oldCTM = this.viewport.getCTM()
     , relativePoint = point.matrixTransform(oldCTM.inverse())
     , modifier = this.svg.createSVGMatrix().translate(relativePoint.x, relativePoint.y).scale(zoomScale).translate(-relativePoint.x, -relativePoint.y)
     , newCTM = oldCTM.multiply(modifier)
 
   if (newCTM.a !== oldCTM.a) {
-    this.viewport.setCTM(newCTM)
+    this.viewport.setCTM(newCTM, userTriggered)
   }
 }
 
@@ -464,7 +469,7 @@ SvgPanZoom.prototype.handleMouseMove = function(evt) {
     var point = SvgUtils.getEventPoint(evt, this.svg).matrixTransform(this.firstEventCTM.inverse())
       , viewportCTM = this.firstEventCTM.translate(point.x - this.stateOrigin.x, point.y - this.stateOrigin.y)
 
-    this.viewport.setCTM(viewportCTM)
+    this.viewport.setCTM(viewportCTM, true)
   }
 }
 
@@ -539,7 +544,7 @@ SvgPanZoom.prototype.pan = function(point) {
   var viewportCTM = this.viewport.getCTM()
   viewportCTM.e = point.x
   viewportCTM.f = point.y
-  this.viewport.setCTM(viewportCTM)
+  this.viewport.setCTM(viewportCTM, false)
 }
 
 /**
@@ -551,7 +556,7 @@ SvgPanZoom.prototype.panBy = function(point) {
   var viewportCTM = this.viewport.getCTM()
   viewportCTM.e += point.x
   viewportCTM.f += point.y
-  this.viewport.setCTM(viewportCTM)
+  this.viewport.setCTM(viewportCTM, false)
 }
 
 /**
